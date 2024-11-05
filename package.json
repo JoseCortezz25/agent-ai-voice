@@ -1,6 +1,6 @@
 {
-  "name": "manuly-project",
-  "version": "0.1.0",
+  "name": "agent-ai-voice-project",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -17,11 +17,14 @@
     "next": "14.2.2",
     "react": "^18",
     "react-dom": "^18",
+    "react-feather": "^2.0.10",
     "tailwind-merge": "^2.3.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^1.6.1",
+    "@openai/realtime-api-beta": "github:openai/openai-realtime-api-beta",
     "@storybook/addon-essentials": "^8.2.2",
     "@storybook/addon-interactions": "^8.2.2",
     "@storybook/addon-links": "^8.2.2",
@@ -44,5 +47,17 @@
     "storybook": "^8.2.2",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
