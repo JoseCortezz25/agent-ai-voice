@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useCallback, useState } from 'react';
 
+import { Button as ButtonSCN } from '@/components/ui/button';
+
 // Import the RealtimeClient and ItemType from the Realtime API
 import { RealtimeClient } from '@openai/realtime-api-beta';
 import { ItemType } from '@openai/realtime-api-beta/dist/lib/client.js';
@@ -11,7 +13,9 @@ import { WavRecorder, WavStreamPlayer } from '@/lib/wavtools/index';
 import { instructions } from '@/lib/system-prompt';
 import { WavRenderer } from '@/lib/way_renderer';
 import { Button } from '@/components/button/Button';
-import { X, Zap } from 'react-feather';
+// import { X, Zap } from 'react-feather';
+import { cn } from '@/lib/utils';
+import { X, Zap, AudioLines } from 'lucide-react';
 
 const SERVER_URL: string =
   process.env.NEXT_PUBLIC_SERVER_URL || '';
@@ -24,10 +28,18 @@ interface RealtimeEvent {
   time: string;
   source: 'client' | 'server';
   count?: number;
-  event: { [key: string]: any };
+  event: { [key: string]: unknown };
 }
 
+
+
 export default function Home() {
+
+  enum Views {
+    Initial = 'initial',
+    Conversation = 'conversation',
+  };
+  const [view, setView] = useState<Views>(Views.Initial);
 
   /**
    * Ask user for API Key
@@ -41,6 +53,7 @@ export default function Home() {
   if (apiKey !== '') {
     localStorage.setItem('tmp::voice_api_key', apiKey);
   }
+
 
   /**
    * Instantiate:
@@ -57,15 +70,10 @@ export default function Home() {
   );
 
   const clientRef = useRef<RealtimeClient>(
-    new RealtimeClient(
-      // SERVER_URL
-      //   ? { url: SERVER_URL }
-      // :
-      {
-        apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || "",
-        dangerouslyAllowAPIKeyInBrowser: true
-      }
-    )
+    new RealtimeClient({
+      apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || "",
+      dangerouslyAllowAPIKeyInBrowser: true
+    })
   );
   /**
    * All of our variables for displaying application state
@@ -147,12 +155,6 @@ export default function Home() {
     setIsConnected(false);
     setRealtimeEvents([]);
     setItems([]);
-    // setMemoryKv({});
-    // setCoords({
-    //   lat: 37.775593,
-    //   lng: -122.418137,
-    // });
-    // setMarker(null);
 
     const client = clientRef.current;
     client.disconnect();
@@ -290,78 +292,113 @@ export default function Home() {
     };
   }, []);
 
+
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-      <div>
-
-        <div className="content-block conversation">
-          <h3 className="content-block-title">Conversación</h3>
-          <div className="content-block-body" data-conversation-content>
-            {!items.length && `awaiting connection...`}
-            {items.map((conversationItem, i) => {
-              return (
-                <div className="conversation-item" key={conversationItem.id}>
-                  <div className={`speaker ${conversationItem.role || ''}`}>
-                    <div>
-                      {(
-                        conversationItem.role || conversationItem.type
-                      ).replaceAll('_', ' ')}
-                    </div>
-                    <div
-                      className="close"
-                      onClick={() =>
-                        deleteConversationItem(conversationItem.id)
-                      }
-                    >
-                      <X />
-                    </div>
-                  </div>
-                  <div className={`speaker-content`}>
-                    {/* tool response */}
-                    {conversationItem.type === 'function_call_output' && (
-                      <div>{conversationItem.formatted.output}</div>
-                    )}
-                    {/* tool call */}
-                    {!!conversationItem.formatted.tool && (
-                      <div>
-                        {conversationItem.formatted.tool.name}(
-                        {conversationItem.formatted.tool.arguments})
-                      </div>
-                    )}
-                    {!conversationItem.formatted.tool &&
-                      conversationItem.role === 'user' && (
-                        <div>
-                          {conversationItem.formatted.transcript ||
-                            (conversationItem.formatted.audio?.length
-                              ? '(awaiting transcript)'
-                              : conversationItem.formatted.text ||
-                              '(item sent)')}
-                        </div>
-                      )}
-                    {!conversationItem.formatted.tool &&
-                      conversationItem.role === 'assistant' && (
-                        <div>
-                          {conversationItem.formatted.transcript ||
-                            conversationItem.formatted.text ||
-                            '(truncated)'}
-                        </div>
-                      )}
-                    {conversationItem.formatted.file && (
-                      <audio
-                        src={conversationItem.formatted.file.url}
-                        controls
-                      />
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+    <main className="flex min-h-screen flex-col items-center justify-between h-screen">
+      {view === Views.Initial && (
+        <div className="text-center space-y-6 transition-opacity duration-500 ease-in-out h-screen flex flex-col justify-center items-center">
+          <h1 className="text-4xl leading-4xl font-bold">Asistente de Voz AI</h1>
+          <p className="text-xl leading-xl">Haz clic en el botón para iniciar una conversación</p>
+          <button
+            onClick={() => {
+              connectConversation();
+              setView(Views.Conversation);
+            }}
+            className="px-6 py-3 bg-black text-white rounded-full hover:bg-gray-800 transition-colors duration-300"
+          >
+            Iniciar Conversación
+          </button>
         </div>
-        <div className="content-actions">
+      )}
+      {view === Views.Conversation && (
 
-          {/* <div className="spacer" /> */}
-          {isConnected && canPushToTalk && (
+        <section className="max-w-[1024px] min-w-[980px] w-full border border-red-300">
+          {/* Conversation */}
+          <div className="max-h-[70dvh] h-full w-full">
+
+            <div data-conversation-content className="border border-green-400 h-full">
+              {!items.length && `awaiting connection...`}
+              {items.map((conversationItem, i) => {
+                return (
+                  <div className="conversation-item" key={conversationItem.id}>
+                    <div className={`speaker ${conversationItem.role || ''}`}>
+                      <div>
+                        {(
+                          conversationItem.role || conversationItem.type
+                        ).replaceAll('_', ' ')}
+                      </div>
+                      <div
+                        className="close"
+                        onClick={() =>
+                          deleteConversationItem(conversationItem.id)
+                        }
+                      >
+                        <X />
+                      </div>
+                    </div>
+                    <div className={`speaker-content`}>
+                      {/* tool response */}
+                      {conversationItem.type === 'function_call_output' && (
+                        <div>{conversationItem.formatted.output}</div>
+                      )}
+                      {/* tool call */}
+                      {!!conversationItem.formatted.tool && (
+                        <div>
+                          {conversationItem.formatted.tool.name}(
+                          {conversationItem.formatted.tool.arguments})
+                        </div>
+                      )}
+                      {!conversationItem.formatted.tool &&
+                        conversationItem.role === 'user' && (
+                          <div>
+                            {conversationItem.formatted.transcript ||
+                              (conversationItem.formatted.audio?.length
+                                ? '(awaiting transcript)'
+                                : conversationItem.formatted.text ||
+                                '(item sent)')}
+                          </div>
+                        )}
+                      {!conversationItem.formatted.tool &&
+                        conversationItem.role === 'assistant' && (
+                          <div>
+                            {conversationItem.formatted.transcript ||
+                              conversationItem.formatted.text ||
+                              '(truncated)'}
+                          </div>
+                        )}
+                      {conversationItem.formatted.file && (
+                        <audio
+                          src={conversationItem.formatted.file.url}
+                          controls
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Controls */}
+          <div className="w-full flex gap-3 py-3 justify-between">
+            <ButtonSCN
+              onMouseDown={startRecording}
+              onMouseUp={stopRecording}
+              className={cn(isRecording && "active:bg-red-500 active:text-white")}
+              variant="secondary"
+            // disabled={!isConnected || !canPushToTalk}
+            >
+              <AudioLines />
+              {isRecording ? 'Soltar para enviar' : 'Presionar para hablar'}
+            </ButtonSCN>
+
+            <ButtonSCN
+              onClick={disconnectConversation}
+            >
+              Terminar conversación
+            </ButtonSCN>
+            {/* {isConnected && canPushToTalk && (
             <Button
               label={isRecording ? 'Soltar para enviar' : 'Presionar para hablar'}
               buttonStyle={isRecording ? 'alert' : 'regular'}
@@ -369,21 +406,23 @@ export default function Home() {
               onMouseDown={startRecording}
               onMouseUp={stopRecording}
             />
+
+
           )}
-          <div className="spacer" />
-          <div>
-            <Button
-              label={isConnected ? 'Terminar conversación' : 'Iniciar conversación'}
-              iconPosition={isConnected ? 'end' : 'start'}
-              icon={isConnected ? X : Zap}
-              buttonStyle={isConnected ? 'regular' : 'action'}
-              onClick={
-                isConnected ? disconnectConversation : connectConversation
-              }
-            />
+          <Button
+            label={isConnected ? 'Terminar conversación' : 'Iniciar conversación'}
+            iconPosition={isConnected ? 'end' : 'start'}
+            icon={isConnected ? X : Zap}
+            buttonStyle={isConnected ? 'regular' : 'action'}
+            onClick={
+              isConnected ? disconnectConversation : connectConversation
+            }
+          /> */}
           </div>
-        </div>
-      </div>
+        </section>
+      )}
     </main>
+
   );
 }
+
